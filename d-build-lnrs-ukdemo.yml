@@ -1,0 +1,22 @@
+name: CLM LNRSUK UKDEMO Pipeline
+on:
+  workflow_dispatch:
+    inputs: 
+      release: 
+        type: string
+        description: RELEASE NUMBER
+        required: true
+        
+jobs:
+  web:
+    name: Deploy LNRSUK UKDEMO [ RELEASE NO. ${{ github.event.inputs.release }} ]
+    uses: LexisNexis-RBA/LexisNexis-CLM/.github/workflows/base-definition.yml@master
+    with: 
+      release: ${{ github.event.inputs.release }}
+      prefix: lnrsuk-ukdemo
+      aws_region: eu-west-2
+      aws_account: ris-bussvcs-prod
+      clm_fqdn: demo.clm.lexisnexisrisk.eu
+      environment: ukdemo
+      client: lnrsuk
+    secrets: inherit

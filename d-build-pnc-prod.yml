@@ -1,0 +1,22 @@
+name: CLM PNC PROD Pipeline
+on:
+  workflow_dispatch:
+    inputs: 
+      release: 
+        type: string
+        description: RELEASE NUMBER
+        required: true
+        
+jobs:
+  web:
+    name: Deploy PNC PROD [ RELEASE NO. ${{ github.event.inputs.release }} ]
+    uses: LexisNexis-RBA/LexisNexis-CLM/.github/workflows/base-definition.yml@master
+    with: 
+      release: ${{ github.event.inputs.release }}
+      prefix: pnc-prod
+      aws_region:  us-east-2
+      aws_account: ris-bussvcscustomercloud-prod
+      clm_fqdn: pnc.clm.lexisnexisrisk.com
+      environment: prod
+      client: pnc
+    secrets: inherit

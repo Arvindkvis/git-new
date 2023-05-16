@@ -1,0 +1,22 @@
+name: CLM LNRSUK TMXDEMO Pipeline
+on:
+  workflow_dispatch:
+    inputs: 
+      release: 
+        type: string
+        description: RELEASE NUMBER
+        required: true
+        
+jobs:
+  web:
+    name: Deploy LNRSUK TMXDEMO [ RELEASE NO. ${{ github.event.inputs.release }} ]
+    uses: LexisNexis-RBA/LexisNexis-CLM/.github/workflows/base-definition.yml@master
+    with: 
+      release: ${{ github.event.inputs.release }}
+      prefix: lnrsuk-tmxdemo
+      aws_region: us-east-1
+      aws_account: ris-bussvcs-dev
+      clm_fqdn: tmxdemo-clm.noam.lnrm.net
+      environment: tmxdemo
+      client: lnrsuk
+    secrets: inherit

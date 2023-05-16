@@ -1,0 +1,22 @@
+name: CLM PNC TECHDEV Pipeline
+on:
+  workflow_dispatch:
+    inputs: 
+      release: 
+        type: string
+        description: RELEASE NUMBER
+        required: true
+        
+jobs:
+  web:
+    name: Deploy PNC TECHDEV [ RELEASE NO. ${{ github.event.inputs.release }} ]
+    uses: LexisNexis-RBA/LexisNexis-CLM/.github/workflows/base-definition.yml@master
+    with: 
+      release: ${{ github.event.inputs.release }}
+      prefix: pnc-techdev
+      aws_region: eu-west-2
+      aws_account: ris-bussvcs-dev
+      clm_fqdn: techdev-clm.eu.lnrm.net
+      environment: techdev
+      client: pnc
+    secrets: inherit

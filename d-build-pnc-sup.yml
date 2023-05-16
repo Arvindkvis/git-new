@@ -1,0 +1,22 @@
+name: CLM PNC SUP Pipeline
+on:
+  workflow_dispatch:
+    inputs: 
+      release: 
+        type: string
+        description: RELEASE NUMBER
+        required: true
+        
+jobs:
+  web:
+    name: Deploy PNC SUP [ RELEASE NO. ${{ github.event.inputs.release }} ]
+    uses: LexisNexis-RBA/LexisNexis-CLM/.github/workflows/base-definition.yml@master
+    with: 
+      release: ${{ github.event.inputs.release }}
+      prefix: pnc-sup
+      aws_region: us-east-2
+      aws_account: ris-bussvcs-dev
+      clm_fqdn: pncsupport-clm.noam.lnrm.net
+      environment: pncsup
+      client: pnc
+    secrets: inherit

@@ -1,0 +1,121 @@
+name: Deploy
+on:
+  workflow_call:  
+    inputs:
+      release:
+        type: string
+        required: true
+        description: 'RELEASE NUMBER'
+      prefix:
+        type: string
+        required: true
+        description: 'PREFIX'
+      aws_account:
+        type: string
+        required: true
+        description: 'AWS ACCOUNT'
+      aws_region:
+        type: string
+        required: true
+        description: 'AWS REGION'
+      client:
+        type: string
+        required: true
+        description: 'CLIENT'
+      clm_fqdn:
+        type: string
+        required: true
+        description: 'CLM FQDN'
+      environment:
+        type: string
+        required: false
+        description: 'ENVIRONMENT'
+      instance:
+        type: string
+        required: true
+        description: 'INSTANCE'
+
+env:
+  BUNDLE: ${{ inputs.release }}
+  REGISTRY: ghcr.io
+  AWS_ACCOUNT: ${{ inputs.aws_account }}
+  AWS_REGION: ${{ inputs.aws_region }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.prefix }}
+    permissions:
+      packages: read
+      id-token: write
+      contents: write
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v3
+      
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: log in to container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: pull ansible base image
+        run: docker pull ${{ env.REGISTRY }}/lexisnexis-rba/tas/windows-self-service/ansible:v1
+        
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@master
+        with: 
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT }}:role/github-ADFS-AdminLinux-clm
+          role-session-name: CLMGithubSession
+          #role-duration-seconds: 7200
+      
+      - name: Create instance-id and instance-ip files
+        run: |
+          touch instance-id
+          touch instance-ip
+      
+      - name: Run Ansible
+        env:
+          AWS_USERNAME: ${{ secrets.AWS_USERNAME }}
+          AWS_PASSWORD: ${{ secrets.AWS_PASSWORD }}
+          AWS_ACCOUNT: ${{ env.AWS_ACCOUNT }}
+          RELEASE: ${{ inputs.release }}
+        run: |
+          docker run \
+          -v `pwd`:/etc/ansible/ \
+          --add-host=federation.reedelsevier.com:138.12.12.62 \
+          --env aws_username=$AWS_USERNAME \
+          --env aws_password=$AWS_PASSWORD \
+          --env aws_account=$AWS_ACCOUNT \
+          ${{ secrets.CI_REGISTRY }}/tas/ansible/ansible/base \
+          ansible-playbook -i ${{ inputs.release }} deploy-clm.yml \
+          --extra-vars "
+          pipeline_id=${{ github.run_id }}
+          aws_region=${{ secrets.AWS_REGION }}
+          aws_subnet=${{ secrets.AWS_SUBNET }}
+          aws_vpc=${{ secrets.AWS_VPC }}
+          release='$RELEASE'
+          client=${{ secrets.CLIENT }}
+          build_environment=${{ secrets.ENVIRONMENT }}
+          clm_fqdn=${{ secrets.CLM_FQDN }}
+          create_bundle=${{ secrets.CREATE_BUNDLE }}
+          package=${{ secrets.PACKAGE }}
+          vault_path=${{ secrets.VAULT_PATH }}
+          vault_token=${{ secrets.VAULT_TOKEN }}" \
+          -v
+
+      - name: Show instance IP and AMI ID
+        run: |
+          printf '\n\nDeploy complete! Instance is accessible at:\n' && cat instance-ip && printf '\n\n'
+          printf 'AMI ID:\n' && cat ami-id && printf '\n\n'
+    
+      - name: Upload AMI ID Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: ami-id
