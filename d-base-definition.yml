@@ -2,10 +2,6 @@ name: Deploy
 on:
   workflow_call:  
     inputs:
-      release:
-        type: string
-        required: true
-        description: 'RELEASE NUMBER'
       prefix:
         type: string
         required: true
@@ -34,9 +30,13 @@ on:
         type: string
         required: true
         description: 'INSTANCE'
+      init_db:
+        type: string
+        required: true
+        description: 'INIT_DB status'
 
 env:
-  BUNDLE: ${{ inputs.release }}
+  INSTANCE: ${{ inputs.instance }}
   REGISTRY: ghcr.io
   AWS_ACCOUNT: ${{ inputs.aws_account }}
   AWS_REGION: ${{ inputs.aws_region }}
@@ -85,7 +85,7 @@ jobs:
           AWS_USERNAME: ${{ secrets.AWS_USERNAME }}
           AWS_PASSWORD: ${{ secrets.AWS_PASSWORD }}
           AWS_ACCOUNT: ${{ env.AWS_ACCOUNT }}
-          RELEASE: ${{ inputs.release }}
+          INSTANCE: ${{ inputs.instance }}
         run: |
           docker run \
           -v `pwd`:/etc/ansible/ \
@@ -94,7 +94,7 @@ jobs:
           --env aws_password=$AWS_PASSWORD \
           --env aws_account=$AWS_ACCOUNT \
           ${{ secrets.CI_REGISTRY }}/tas/ansible/ansible/base \
-          ansible-playbook -i ${{ inputs.release }} deploy-clm.yml \
+          ansible-playbook -i ${{ inputs.instance }} deploy-clm.yml \
           --extra-vars "
           pipeline_id=${{ github.run_id }}
           aws_region=${{ secrets.AWS_REGION }}
@@ -104,18 +104,11 @@ jobs:
           client=${{ secrets.CLIENT }}
           build_environment=${{ secrets.ENVIRONMENT }}
           clm_fqdn=${{ secrets.CLM_FQDN }}
-          create_bundle=${{ secrets.CREATE_BUNDLE }}
           package=${{ secrets.PACKAGE }}
           vault_path=${{ secrets.VAULT_PATH }}
-          vault_token=${{ secrets.VAULT_TOKEN }}" \
+          vault_token=${{ secrets.VAULT_TOKEN }}" 
+          init_db=${{ inputs.init_db }}
+          pipeline_id=$CI_PIPELINE_ID \
           -v
 
-      - name: Show instance IP and AMI ID
-        run: |
-          printf '\n\nDeploy complete! Instance is accessible at:\n' && cat instance-ip && printf '\n\n'
-          printf 'AMI ID:\n' && cat ami-id && printf '\n\n'
-    
-      - name: Upload AMI ID Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          path: ami-id
+
